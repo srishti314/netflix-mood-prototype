@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Netflix CPOP - Mood-Aware Promotional Asset Intelligence</title>
+<style>
+/* ===== RESET & BASE ===== */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --netflix-red:#E50914;--netflix-red-dark:#B20710;--netflix-black:#141414;
+  --netflix-dark:#1a1a2e;--netflix-card:#1e1e30;--netflix-card-hover:#262640;
+  --netflix-border:#2a2a45;--text-primary:#e5e5e5;--text-secondary:#999;
+  --text-muted:#666;--accent-warm:#FF6B35;--accent-tension:#E50914;
+  --accent-nostalgia:#C77DFF;--accent-excitement:#FFD166;--accent-melancholy:#4EA8DE;
+  --accent-calm:#06D6A0;--accent-joy:#F72585;--accent-suspense:#FF4D6D;
+  --sidebar-width:240px;--header-height:56px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--netflix-black);color:var(--text-primary);overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+
+/* ===== LAYOUT ===== */
+.app{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-width);background:var(--netflix-dark);border-right:1px solid var(--netflix-border);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column}
+.main{margin-left:var(--sidebar-width);flex:1;min-height:100vh}
+.header{height:var(--header-height);background:var(--netflix-dark);border-bottom:1px solid var(--netflix-border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:50}
+.content{padding:28px}
+
+/* ===== SIDEBAR ===== */
+.sidebar-logo{padding:20px 24px;border-bottom:1px solid var(--netflix-border);display:flex;align-items:center;gap:12px}
+.sidebar-logo svg{width:24px;height:24px;fill:var(--netflix-red)}
+.sidebar-logo .logo-text{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.sidebar-logo .logo-sub{font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1.5px;margin-top:2px}
+.sidebar-nav{flex:1;padding:16px 0}
+.nav-section{padding:0 16px;margin-bottom:20px}
+.nav-section-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);padding:8px;margin-bottom:4px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text-secondary);transition:all .15s}
+.nav-item:hover{background:var(--netflix-card);color:var(--text-primary)}
+.nav-item.active{background:rgba(229,9,20,.12);color:var(--netflix-red);font-weight:600}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-item .badge{margin-left:auto;background:var(--netflix-red);color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--netflix-border);font-size:11px;color:var(--text-muted)}
+
+/* ===== HEADER ===== */
+.header-left{display:flex;align-items:center;gap:16px}
+.page-title{font-size:16px;font-weight:600}
+.header-right{display:flex;align-items:center;gap:16px}
+.header-search{background:var(--netflix-card);border:1px solid var(--netflix-border);border-radius:8px;padding:7px 14px;color:var(--text-primary);font-size:13px;width:240px;outline:none}
+.header-search:focus{border-color:var(--netflix-red)}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--netflix-red),var(--accent-nostalgia));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+
+/* ===== CARDS ===== */
+.card{background:var(--netflix-card);border:1px solid var(--netflix-border);border-radius:12px;padding:20px;transition:border-color .15s}
+.card:hover{border-color:#3a3a55}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:600}
+.card-subtitle{font-size:11px;color:var(--text-secondary);margin-top:2px}
+
+/* ===== METRICS ===== */
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.metric-card{background:var(--netflix-card);border:1px solid var(--netflix-border);border-radius:12px;padding:20px}
+.metric-label{font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.metric-value{font-size:28px;font-weight:700;letter-spacing:-.5px}
+.metric-change{font-size:12px;margin-top:6px;display:flex;align-items:center;gap:4px}
+.metric-change.positive{color:var(--accent-calm)}
+.metric-change.negative{color:var(--accent-tension)}
+.metric-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:18px}
+
+/* ===== EMOTION BARS ===== */
+.emotion-bar-group{display:flex;flex-direction:column;gap:10px}
+.emotion-bar-row{display:flex;align-items:center;gap:12px}
+.emotion-bar-label{width:80px;font-size:12px;color:var(--text-secondary);text-align:right;flex-shrink:0}
+.emotion-bar-track{flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.emotion-bar-fill{height:100%;border-radius:4px;transition:width .8s ease}
+.emotion-bar-value{width:36px;font-size:12px;color:var(--text-secondary);text-align:right}
+
+/* ===== TABLES ===== */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);padding:10px 14px;border-bottom:1px solid var(--netflix-border);font-weight:600}
+.data-table td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
+.data-table tr:hover td{background:rgba(255,255,255,.02)}
+
+/* ===== TAGS ===== */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
+.tag-warmth{background:rgba(255,107,53,.15);color:var(--accent-warm)}
+.tag-tension{background:rgba(229,9,20,.15);color:var(--accent-tension)}
+.tag-nostalgia{background:rgba(199,125,255,.15);color:var(--accent-nostalgia)}
+.tag-excitement{background:rgba(255,209,102,.15);color:var(--accent-excitement)}
+.tag-melancholy{background:rgba(78,168,222,.15);color:var(--accent-melancholy)}
+.tag-calm{background:rgba(6,214,160,.15);color:var(--accent-calm)}
+.tag-joy{background:rgba(247,37,133,.15);color:var(--accent-joy)}
+.tag-suspense{background:rgba(255,77,109,.15);color:var(--accent-suspense)}
+
+/* ===== MOOD VECTOR RADAR ===== */
+.radar-container{position:relative;width:220px;height:220px;margin:0 auto}
+.radar-canvas{width:100%;height:100%}
+
+/* ===== ASSET THUMBNAILS ===== */
+.asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}
+.asset-card{border-radius:10px;overflow:hidden;background:var(--netflix-card);border:1px solid var(--netflix-border);transition:transform .2s,border-color .2s;cursor:pointer}
+.asset-card:hover{transform:translateY(-3px);border-color:var(--netflix-red)}
+.asset-thumb{width:100%;aspect-ratio:16/9;position:relative;overflow:hidden}
+.asset-thumb-img{width:100%;height:100%;object-fit:cover}
+.asset-thumb-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:rgba(255,255,255,.15)}
+.asset-info{padding:12px}
+.asset-title{font-size:13px;font-weight:600;margin-bottom:6px}
+.asset-meta{font-size:11px;color:var(--text-secondary)}
+.asset-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.asset-score{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.8);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600}
+
+/* ===== MOOD CONTEXT BAR ===== */
+.mood-context{background:linear-gradient(135deg,rgba(229,9,20,.08),rgba(199,125,255,.08));border:1px solid var(--netflix-border);border-radius:12px;padding:16px 24px;display:flex;align-items:center;gap:24px;margin-bottom:24px}
+.mood-signal{display:flex;align-items:center;gap:8px;font-size:13px}
+.mood-signal-icon{font-size:18px}
+.mood-signal-label{color:var(--text-secondary)}
+.mood-signal-value{font-weight:600}
+
+/* ===== DRIFT COMPARISON ===== */
+.drift-pair{display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.drift-arrow{font-size:20px;color:var(--text-muted)}
+.drift-score{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.drift-score.good{background:rgba(6,214,160,.15);color:var(--accent-calm)}
+.drift-score.warning{background:rgba(255,209,102,.15);color:var(--accent-excitement)}
+.drift-score.bad{background:rgba(229,9,20,.15);color:var(--accent-tension)}
+
+/* ===== TABS ===== */
+.tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--netflix-border);padding-bottom:-1px}
+.tab{padding:10px 18px;font-size:13px;color:var(--text-secondary);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.tab:hover{color:var(--text-primary)}
+.tab.active{color:var(--netflix-red);border-bottom-color:var(--netflix-red);font-weight:600}
+
+/* ===== BUTTONS ===== */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--netflix-red);color:#fff}
+.btn-primary:hover{background:var(--netflix-red-dark)}
+.btn-secondary{background:var(--netflix-card);color:var(--text-primary);border:1px solid var(--netflix-border)}
+.btn-secondary:hover{border-color:var(--text-muted)}
+.btn-sm{padding:5px 12px;font-size:12px}
+
+/* ===== SECTION HEADERS ===== */
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.section-title{font-size:18px;font-weight:700;letter-spacing:-.3px}
+.section-desc{font-size:13px;color:var(--text-secondary);margin-top:4px}
+
+/* ===== PAGE SECTIONS ===== */
+.page{display:none}
+.page.active{display:block}
+
+/* ===== CHARTS (CSS-based) ===== */
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:160px;padding-top:20px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bar{border-radius:4px 4px 0 0;width:100%;min-height:4px;transition:height .6s ease}
+.bar-label{font-size:10px;color:var(--text-muted);text-align:center}
+.bar-value{font-size:11px;font-weight:600}
+
+/* ===== GRID LAYOUTS ===== */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:20px}
+.grid-1-2{display:grid;grid-template-columns:1fr 2fr;gap:20px}
+
+/* ===== STATUS DOT ===== */
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.status-dot.active{background:var(--accent-calm)}
+.status-dot.warning{background:var(--accent-excitement)}
+.status-dot.error{background:var(--accent-tension)}
+
+/* ===== PROGRESS RING ===== */
+.progress-ring{position:relative;width:80px;height:80px}
+.progress-ring svg{transform:rotate(-90deg)}
+.progress-ring-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
+
+/* ===== ANIMATION ===== */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card,.metric-card{animation:fadeIn .4s ease}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--accent-calm);animation:pulse 2s infinite}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--netflix-border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
+
+/* ===== TOOLTIP ===== */
+.tooltip{position:relative}
+.tooltip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--netflix-card);border:1px solid var(--netflix-border);padding:6px 10px;border-radius:6px;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
+.tooltip:hover::after{opacity:1}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1200px){.metrics-grid{grid-template-columns:repeat(2,1fr)}.grid-2,.grid-3,.grid-2-1,.grid-1-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- ===== SIDEBAR ===== -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <svg viewBox="0 0 24 24"><path d="M5.398 0v24l6.735-2.265V0H5.398zm6.867 0v21.735L19 24V0h-6.735z"/></svg>
+    <div>
+      <div class="logo-text">CPOP Platform</div>
+      <div class="logo-sub">Mood Intelligence</div>
+    </div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-label">Overview</div>
+      <div class="nav-item active" data-page="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Layer 1: Content Side</div>
+      <div class="nav-item" data-page="tagging">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        Emotion Tagging
+        <span class="badge">AI</span>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Layer 2: Demand Side</div>
+      <div class="nav-item" data-page="mood">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        Mood Inference
+        <span class="live-dot" style="margin-left:auto"></span>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Layer 3: Matching</div>
+      <div class="nav-item" data-page="matching">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        Asset Matching
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Quality</div>
+      <div class="nav-item" data-page="localization">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        Localization Drift
+        <span class="badge" style="background:var(--accent-excitement);color:#000">3</span>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">Validation</div>
+      <div class="nav-item" data-page="experiment">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        A/B Experiments
+      </div>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    Mood Intelligence v0.9 Beta<br>CPOP Internal Tool
+  </div>
+</nav>
+
+<!-- ===== MAIN AREA ===== -->
+<div class="main">
+  <header class="header">
+    <div class="header-left">
+      <span class="page-title" id="pageTitle">Dashboard</span>
+    </div>
+    <div class="header-right">
+      <input type="text" class="header-search" placeholder="Search titles, assets, emotions...">
+      <div class="avatar">SG</div>
+    </div>
+  </header>
+
+  <div class="content">
+<!-- ========================================== -->
+<!--         PAGE: DASHBOARD                    -->
+<!-- ========================================== -->
+<div class="page active" id="page-dashboard">
+
+  <!-- Metrics Row -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-icon" style="background:rgba(229,9,20,.12)">&#127917;</div>
+      <div class="metric-label">Assets Emotion-Tagged</div>
+      <div class="metric-value">248,391</div>
+      <div class="metric-change positive">&#9650; 12,340 this week</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:rgba(6,214,160,.12)">&#127919;</div>
+      <div class="metric-label">Mood-Match CTR Lift</div>
+      <div class="metric-value" style="color:var(--accent-calm)">+6.2%</div>
+      <div class="metric-change positive">&#9650; Exceeding 5% target</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:rgba(199,125,255,.12)">&#128200;</div>
+      <div class="metric-label">Title-Start Rate Lift</div>
+      <div class="metric-value" style="color:var(--accent-nostalgia)">+3.8%</div>
+      <div class="metric-change positive">&#9650; Above 3% threshold</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:rgba(255,209,102,.12)">&#128101;</div>
+      <div class="metric-label">Dashboard Weekly Active</div>
+      <div class="metric-value">73%</div>
+      <div class="metric-change positive">&#9650; Above 70% adoption goal</div>
+    </div>
+  </div>
+
+  <!-- Two Column: Emotional Performance + Gaps -->
+  <div class="grid-2" style="margin-bottom:24px">
+    <!-- Emotional Engagement by Mood -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Emotional Engagement by Mood Context</div>
+          <div class="card-subtitle">CTR indexed vs. baseline by inferred member mood</div>
+        </div>
+        <button class="btn btn-sm btn-secondary">Last 30 days</button>
+      </div>
+      <div class="bar-chart" id="engagementChart">
+        <div class="bar-col"><div class="bar-value" style="color:var(--accent-calm)">+8.1%</div><div class="bar" style="height:81%;background:var(--accent-calm)"></div><div class="bar-label">Relaxed</div></div>
+        <div class="bar-col"><div class="bar-value" style="color:var(--accent-nostalgia)">+7.2%</div><div class="bar" style="height:72%;background:var(--accent-nostalgia)"></div><div class="bar-label">Nostalgic</div></div>
+        <div class="bar-col"><div class="bar-value" style="color:var(--accent-excitement)">+6.4%</div><div class="bar" style="height:64%;background:var(--accent-excitement)"></div><div class="bar-label">Excited</div></div>
+        <div class="bar-col"><div class="bar-value" style="color:var(--accent-warm)">+5.8%</div><div class="bar" style="height:58%;background:var(--accent-warm)"></div><div class="bar-label">Warm</div></div>
+        <div class="bar-col"><div class="bar-value" style="color:var(--accent-melancholy)">+5.1%</div><div class="bar" style="height:51%;background:var(--accent-melancholy)"></div><div class="bar-label">Reflective</div></div>
+        <div class="bar-col"><div class="bar-value" style="color:var(--accent-tension)">+4.3%</div><div class="bar" style="height:43%;background:var(--accent-tension)"></div><div class="bar-label">Tense</div></div>
+        <div class="bar-col"><div class="bar-value" style="color:var(--accent-suspense)">+3.9%</div><div class="bar" style="height:39%;background:var(--accent-suspense)"></div><div class="bar-label">Suspensful</div></div>
+        <div class="bar-col"><div class="bar-value" style="color:var(--accent-joy)">+3.2%</div><div class="bar" style="height:32%;background:var(--accent-joy)"></div><div class="bar-label">Playful</div></div>
+      </div>
+    </div>
+
+    <!-- Emotional Gap Alerts -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Emotional Gap Alerts</div>
+          <div class="card-subtitle">Titles missing high-demand emotional variants</div>
+        </div>
+        <span class="badge">7 gaps</span>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Title</th><th>Missing Emotion</th><th>Demand</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:600">Stranger Things S5</td><td><span class="tag tag-nostalgia">Nostalgia</span></td><td>&#128308; High</td></tr>
+          <tr><td style="font-weight:600">The Diplomat S3</td><td><span class="tag tag-warmth">Warmth</span></td><td>&#128308; High</td></tr>
+          <tr><td style="font-weight:600">One Piece S2</td><td><span class="tag tag-calm">Calm</span></td><td>&#128993; Medium</td></tr>
+          <tr><td style="font-weight:600">Black Mirror S7</td><td><span class="tag tag-joy">Joy</span></td><td>&#128993; Medium</td></tr>
+          <tr><td style="font-weight:600">Squid Game S3</td><td><span class="tag tag-melancholy">Melancholy</span></td><td>&#128993; Medium</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Two Column: Tag Accuracy + Localization -->
+  <div class="grid-2">
+    <!-- Tagging Model Accuracy -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Emotion Tagging Model Accuracy</div>
+          <div class="card-subtitle">Human expert agreement rate by asset type</div>
+        </div>
+      </div>
+      <div class="emotion-bar-group">
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Artwork</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:87%;background:var(--accent-calm)"></div></div><div class="emotion-bar-value">87%</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Synopses</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:84%;background:var(--accent-nostalgia)"></div></div><div class="emotion-bar-value">84%</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Trailers</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:79%;background:var(--accent-excitement)"></div></div><div class="emotion-bar-value">79%</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Banners</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:85%;background:var(--accent-warm)"></div></div><div class="emotion-bar-value">85%</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Promo Copy</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:82%;background:var(--accent-melancholy)"></div></div><div class="emotion-bar-value">82%</div></div>
+      </div>
+      <div style="margin-top:16px;padding:10px 14px;background:rgba(6,214,160,.08);border-radius:8px;font-size:12px;color:var(--accent-calm)">&#10003; All asset types exceed 79% threshold. Average: 83.4% agreement.</div>
+    </div>
+
+    <!-- Localization Drift Summary -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Localization Emotional Drift</div>
+          <div class="card-subtitle">Top flagged assets with tone shifts in translation</div>
+        </div>
+        <button class="btn btn-sm btn-secondary">View all</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Asset</th><th>Language</th><th>Drift</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:600">Wednesday S2 - Banner</td><td>Japanese</td><td><span class="drift-score bad">0.41 High</span></td></tr>
+          <tr><td style="font-weight:600">Squid Game S3 - Synopsis</td><td>Portuguese (BR)</td><td><span class="drift-score warning">0.28 Med</span></td></tr>
+          <tr><td style="font-weight:600">The Crown S6 - Trailer</td><td>German</td><td><span class="drift-score warning">0.24 Med</span></td></tr>
+          <tr><td style="font-weight:600">Money Heist Berlin - Art</td><td>Korean</td><td><span class="drift-score good">0.09 Low</span></td></tr>
+          <tr><td style="font-weight:600">Narcos Mexico - Copy</td><td>French</td><td><span class="drift-score good">0.07 Low</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!--         PAGE: EMOTION TAGGING              -->
+<!-- ========================================== -->
+<div class="page" id="page-tagging">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Emotional Tone Tagging Engine</div>
+      <div class="section-desc">Multimodal AI auto-classifies emotional tone for every promotional asset at ingest</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary">Export Tags</button>
+      <button class="btn btn-primary">+ Run Batch Tag</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="artwork">Artwork</div>
+    <div class="tab" data-tab="trailers">Trailers</div>
+    <div class="tab" data-tab="synopses">Synopses & Copy</div>
+    <div class="tab" data-tab="all">All Assets</div>
+  </div>
+
+  <!-- Asset Cards -->
+  <div class="asset-grid" id="assetGrid">
+    <!-- Asset 1 -->
+    <div class="asset-card" onclick="showAssetDetail(this)">
+      <div class="asset-thumb" style="background:linear-gradient(135deg,#1a0a2e,#3d1a6e,#e50914)">
+        <div class="asset-thumb-placeholder">ST</div>
+        <div class="asset-score" style="color:var(--accent-calm)">87%</div>
+      </div>
+      <div class="asset-info">
+        <div class="asset-title">Stranger Things S5 - Hero Art A</div>
+        <div class="asset-meta">Artwork &middot; Tagged 2h ago</div>
+        <div class="asset-tags">
+          <span class="tag tag-tension">Tension 0.82</span>
+          <span class="tag tag-nostalgia">Nostalgia 0.65</span>
+        </div>
+      </div>
+    </div>
+    <!-- Asset 2 -->
+    <div class="asset-card">
+      <div class="asset-thumb" style="background:linear-gradient(135deg,#0a2342,#126782,#51c4d3)">
+        <div class="asset-thumb-placeholder">TD</div>
+        <div class="asset-score" style="color:var(--accent-calm)">91%</div>
+      </div>
+      <div class="asset-info">
+        <div class="asset-title">The Diplomat S3 - Key Art B</div>
+        <div class="asset-meta">Artwork &middot; Tagged 4h ago</div>
+        <div class="asset-tags">
+          <span class="tag tag-suspense">Suspense 0.78</span>
+          <span class="tag tag-warmth">Warmth 0.42</span>
+        </div>
+      </div>
+    </div>
+    <!-- Asset 3 -->
+    <div class="asset-card">
+      <div class="asset-thumb" style="background:linear-gradient(135deg,#2d6a4f,#40916c,#95d5b2)">
+        <div class="asset-thumb-placeholder">OP</div>
+        <div class="asset-score" style="color:var(--accent-calm)">85%</div>
+      </div>
+      <div class="asset-info">
+        <div class="asset-title">One Piece S2 - Action Banner</div>
+        <div class="asset-meta">Artwork &middot; Tagged 6h ago</div>
+        <div class="asset-tags">
+          <span class="tag tag-excitement">Excitement 0.91</span>
+          <span class="tag tag-joy">Joy 0.67</span>
+        </div>
+      </div>
+    </div>
+    <!-- Asset 4 -->
+    <div class="asset-card">
+      <div class="asset-thumb" style="background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)">
+        <div class="asset-thumb-placeholder">BM</div>
+        <div class="asset-score" style="color:var(--accent-excitement)">76%</div>
+      </div>
+      <div class="asset-info">
+        <div class="asset-title">Black Mirror S7 - Teaser Art</div>
+        <div class="asset-meta">Artwork &middot; Tagged 8h ago</div>
+        <div class="asset-tags">
+          <span class="tag tag-tension">Tension 0.88</span>
+          <span class="tag tag-melancholy">Melancholy 0.53</span>
+        </div>
+      </div>
+    </div>
+    <!-- Asset 5 -->
+    <div class="asset-card">
+      <div class="asset-thumb" style="background:linear-gradient(135deg,#e50914,#8b0000,#2d0000)">
+        <div class="asset-thumb-placeholder">SG</div>
+        <div class="asset-score" style="color:var(--accent-calm)">89%</div>
+      </div>
+      <div class="asset-info">
+        <div class="asset-title">Squid Game S3 - Promo Art C</div>
+        <div class="asset-meta">Artwork &middot; Tagged 1d ago</div>
+        <div class="asset-tags">
+          <span class="tag tag-tension">Tension 0.94</span>
+          <span class="tag tag-suspense">Suspense 0.87</span>
+        </div>
+      </div>
+    </div>
+    <!-- Asset 6 -->
+    <div class="asset-card">
+      <div class="asset-thumb" style="background:linear-gradient(135deg,#ffd166,#ef8354,#e50914)">
+        <div class="asset-thumb-placeholder">EN</div>
+        <div class="asset-score" style="color:var(--accent-calm)">83%</div>
+      </div>
+      <div class="asset-info">
+        <div class="asset-title">Emily in Paris S5 - Romance Art</div>
+        <div class="asset-meta">Artwork &middot; Tagged 1d ago</div>
+        <div class="asset-tags">
+          <span class="tag tag-warmth">Warmth 0.86</span>
+          <span class="tag tag-joy">Joy 0.79</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Panel (shown on click) -->
+  <div id="assetDetail" class="card" style="display:none;margin-top:24px">
+    <div class="card-header">
+      <div class="card-title">Stranger Things S5 - Hero Art A &mdash; Emotional Breakdown</div>
+      <button class="btn btn-sm btn-secondary" onclick="document.getElementById('assetDetail').style.display='none'">Close</button>
+    </div>
+    <div class="grid-2">
+      <div>
+        <h4 style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Emotional Vector (8 Dimensions)</h4>
+        <div class="emotion-bar-group">
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Tension</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:82%;background:var(--accent-tension)"></div></div><div class="emotion-bar-value">0.82</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Nostalgia</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:65%;background:var(--accent-nostalgia)"></div></div><div class="emotion-bar-value">0.65</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Excitement</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:58%;background:var(--accent-excitement)"></div></div><div class="emotion-bar-value">0.58</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Melancholy</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:41%;background:var(--accent-melancholy)"></div></div><div class="emotion-bar-value">0.41</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Warmth</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:28%;background:var(--accent-warm)"></div></div><div class="emotion-bar-value">0.28</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Suspense</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:74%;background:var(--accent-suspense)"></div></div><div class="emotion-bar-value">0.74</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Joy</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:15%;background:var(--accent-joy)"></div></div><div class="emotion-bar-value">0.15</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Calm</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:12%;background:var(--accent-calm)"></div></div><div class="emotion-bar-value">0.12</div></div>
+        </div>
+      </div>
+      <div>
+        <h4 style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">AI Analysis Notes</h4>
+        <div style="background:rgba(255,255,255,.03);border-radius:8px;padding:14px;font-size:13px;line-height:1.7;color:var(--text-secondary)">
+          <strong style="color:var(--text-primary)">Visual signals detected:</strong><br>
+          &bull; Dark color palette (deep purples, reds) &rarr; high tension<br>
+          &bull; Character positioning suggests confrontation<br>
+          &bull; Retro-inspired typography &rarr; nostalgia boost<br>
+          &bull; Supernatural lighting effects &rarr; suspense<br><br>
+          <strong style="color:var(--text-primary)">Confidence:</strong> 87% agreement with human panel<br>
+          <strong style="color:var(--text-primary)">Model:</strong> Vision Emotion Tagger v2.3
+        </div>
+        <h4 style="font-size:13px;color:var(--text-secondary);margin:16px 0 12px">Localization Variants</h4>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="drift-score good">EN 0.00</span>
+          <span class="drift-score good">ES 0.06</span>
+          <span class="drift-score good">FR 0.08</span>
+          <span class="drift-score warning">JP 0.22</span>
+          <span class="drift-score good">KR 0.11</span>
+          <span class="drift-score good">PT-BR 0.09</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!--         PAGE: MOOD INFERENCE               -->
+<!-- ========================================== -->
+<div class="page" id="page-mood">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Member Mood Inference Monitor</div>
+      <div class="section-desc">Real-time probabilistic mood vectors inferred from behavioral signals</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="live-dot"></span>
+      <span style="font-size:13px;color:var(--accent-calm)">Live Feed</span>
+      <button class="btn btn-secondary btn-sm">Pause</button>
+    </div>
+  </div>
+
+  <!-- Mood Context Signals Bar -->
+  <div class="mood-context">
+    <div class="mood-signal"><span class="mood-signal-icon">&#128337;</span><span class="mood-signal-label">Time:</span><span class="mood-signal-value">10:47 PM</span></div>
+    <div class="mood-signal"><span class="mood-signal-icon">&#128250;</span><span class="mood-signal-label">Device:</span><span class="mood-signal-value">Smart TV</span></div>
+    <div class="mood-signal"><span class="mood-signal-icon">&#127916;</span><span class="mood-signal-label">Last watched:</span><span class="mood-signal-value">Dark (S3E8)</span></div>
+    <div class="mood-signal"><span class="mood-signal-icon">&#128071;</span><span class="mood-signal-label">Browse speed:</span><span class="mood-signal-value">Slow / Deliberate</span></div>
+    <div class="mood-signal"><span class="mood-signal-icon">&#128257;</span><span class="mood-signal-label">Rewatch:</span><span class="mood-signal-value">None</span></div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:24px">
+    <!-- Current Session Mood Vector -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Session Mood Vector &mdash; Member #a9f3k2</div>
+          <div class="card-subtitle">Probabilistic distribution across 8 emotional dimensions</div>
+        </div>
+        <span style="font-size:12px;color:var(--text-muted)">Updated 3s ago</span>
+      </div>
+      <div class="emotion-bar-group">
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Tension</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:72%;background:var(--accent-tension)"></div></div><div class="emotion-bar-value">0.72</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Nostalgia</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:45%;background:var(--accent-nostalgia)"></div></div><div class="emotion-bar-value">0.45</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Excitement</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:20%;background:var(--accent-excitement)"></div></div><div class="emotion-bar-value">0.20</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Melancholy</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:61%;background:var(--accent-melancholy)"></div></div><div class="emotion-bar-value">0.61</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Warmth</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:33%;background:var(--accent-warm)"></div></div><div class="emotion-bar-value">0.33</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Suspense</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:68%;background:var(--accent-suspense)"></div></div><div class="emotion-bar-value">0.68</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Joy</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:14%;background:var(--accent-joy)"></div></div><div class="emotion-bar-value">0.14</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label">Calm</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:38%;background:var(--accent-calm)"></div></div><div class="emotion-bar-value">0.38</div></div>
+      </div>
+      <div style="margin-top:16px;padding:10px 14px;background:rgba(229,9,20,.08);border-radius:8px;font-size:12px">
+        <strong>Inferred context:</strong> Late-night wind-down after intense content. High receptivity to atmospheric thrillers, psychological dramas, and contemplative sci-fi. Low appetite for high-energy action or comedy.
+      </div>
+    </div>
+
+    <!-- Behavioral Signal Breakdown -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Signal Weight Attribution</div>
+          <div class="card-subtitle">How each behavioral signal contributes to the mood vector</div>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Signal</th><th>Value</th><th>Weight</th><th>Mood Impact</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>&#128337; Time of Day</td><td>10:47 PM (Late)</td><td>
+              <div style="width:100px;height:6px;background:rgba(255,255,255,.06);border-radius:3px"><div style="width:25%;height:100%;background:var(--accent-nostalgia);border-radius:3px"></div></div>
+            </td><td><span class="tag tag-melancholy">+Melancholy</span> <span class="tag tag-calm">+Calm</span></td>
+          </tr>
+          <tr>
+            <td>&#128250; Device Type</td><td>Smart TV (Lean-back)</td><td>
+              <div style="width:100px;height:6px;background:rgba(255,255,255,.06);border-radius:3px"><div style="width:15%;height:100%;background:var(--accent-calm);border-radius:3px"></div></div>
+            </td><td><span class="tag tag-calm">+Calm</span></td>
+          </tr>
+          <tr>
+            <td>&#127916; Recent Viewing</td><td>Dark S3E8 (Sci-fi Drama)</td><td>
+              <div style="width:100px;height:6px;background:rgba(255,255,255,.06);border-radius:3px"><div style="width:35%;height:100%;background:var(--accent-tension);border-radius:3px"></div></div>
+            </td><td><span class="tag tag-tension">+Tension</span> <span class="tag tag-suspense">+Suspense</span></td>
+          </tr>
+          <tr>
+            <td>&#128071; Browse Velocity</td><td>Slow &amp; Deliberate</td><td>
+              <div style="width:100px;height:6px;background:rgba(255,255,255,.06);border-radius:3px"><div style="width:20%;height:100%;background:var(--accent-melancholy);border-radius:3px"></div></div>
+            </td><td><span class="tag tag-melancholy">+Melancholy</span></td>
+          </tr>
+          <tr>
+            <td>&#128257; Rewatch Behavior</td><td>None this session</td><td>
+              <div style="width:100px;height:6px;background:rgba(255,255,255,.06);border-radius:3px"><div style="width:5%;height:100%;background:var(--text-muted);border-radius:3px"></div></div>
+            </td><td><span style="font-size:11px;color:var(--text-muted)">Neutral</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:16px;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:8px;font-size:12px;color:var(--text-secondary)">
+        <strong style="color:var(--text-primary)">Model:</strong> Contextual Bandit v1.2 &middot; Latency: 12ms &middot; Confidence: 0.78
+      </div>
+    </div>
+  </div>
+
+  <!-- Aggregated Mood Distribution -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Platform Mood Distribution &mdash; Right Now</div>
+        <div class="card-subtitle">Aggregate mood vectors across all active sessions (simulated sample)</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm btn-secondary">By Region</button>
+        <button class="btn btn-sm btn-secondary">By Time</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:12px;text-align:center">
+      <div><div style="font-size:24px;margin-bottom:8px">&#128544;</div><div style="font-size:20px;font-weight:700">18%</div><div style="font-size:11px;color:var(--text-secondary)">Tense</div></div>
+      <div><div style="font-size:24px;margin-bottom:8px">&#128148;</div><div style="font-size:20px;font-weight:700">14%</div><div style="font-size:11px;color:var(--text-secondary)">Nostalgic</div></div>
+      <div><div style="font-size:24px;margin-bottom:8px">&#129321;</div><div style="font-size:20px;font-weight:700">12%</div><div style="font-size:11px;color:var(--text-secondary)">Excited</div></div>
+      <div><div style="font-size:24px;margin-bottom:8px">&#128546;</div><div style="font-size:20px;font-weight:700">16%</div><div style="font-size:11px;color:var(--text-secondary)">Reflective</div></div>
+      <div><div style="font-size:24px;margin-bottom:8px">&#129303;</div><div style="font-size:20px;font-weight:700">11%</div><div style="font-size:11px;color:var(--text-secondary)">Warm</div></div>
+      <div><div style="font-size:24px;margin-bottom:8px">&#128561;</div><div style="font-size:20px;font-weight:700">9%</div><div style="font-size:11px;color:var(--text-secondary)">Suspenseful</div></div>
+      <div><div style="font-size:24px;margin-bottom:8px">&#128514;</div><div style="font-size:20px;font-weight:700">8%</div><div style="font-size:11px;color:var(--text-secondary)">Playful</div></div>
+      <div><div style="font-size:24px;margin-bottom:8px">&#128524;</div><div style="font-size:20px;font-weight:700">12%</div><div style="font-size:11px;color:var(--text-secondary)">Calm</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!--         PAGE: ASSET MATCHING               -->
+<!-- ========================================== -->
+<div class="page" id="page-matching">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Mood-Asset Matching Engine</div>
+      <div class="section-desc">Real-time asset selection based on mood vector &times; emotional tone matching</div>
+    </div>
+    <button class="btn btn-primary" onclick="simulateMatch()">&#9654; Simulate New Session</button>
+  </div>
+
+  <!-- Scenario Selector -->
+  <div class="mood-context" id="matchScenario">
+    <div style="font-size:13px;font-weight:600;margin-right:12px">Scenario:</div>
+    <div class="mood-signal"><span class="mood-signal-icon">&#127769;</span><span class="mood-signal-value" id="scenarioLabel">Late-Night Wind-Down</span></div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-sm btn-secondary" onclick="setScenario('latenight')">Late Night</button>
+      <button class="btn btn-sm btn-secondary" onclick="setScenario('saturday')">Saturday Morning</button>
+      <button class="btn btn-sm btn-secondary" onclick="setScenario('comfort')">Comfort Seeking</button>
+      <button class="btn btn-sm btn-secondary" onclick="setScenario('commute')">Mobile Commute</button>
+    </div>
+  </div>
+
+  <!-- Side by Side Comparison -->
+  <div class="grid-2" style="margin-bottom:24px">
+    <!-- Without Mood Matching -->
+    <div class="card" style="border-color:var(--text-muted)">
+      <div class="card-header">
+        <div>
+          <div class="card-title" style="color:var(--text-secondary)">&#10060; Without Mood Matching (Current)</div>
+          <div class="card-subtitle">Assets selected by historical preference only</div>
+        </div>
+      </div>
+      <div id="defaultAssets" style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="width:120px;height:68px;border-radius:6px;background:linear-gradient(135deg,#e50914,#8b0000);display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(255,255,255,.3);flex-shrink:0">ST</div>
+          <div><div style="font-size:13px;font-weight:600">Stranger Things S5</div><div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Hero Art A - <span class="tag tag-excitement" style="font-size:10px">High Energy</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:4px">Generic action-oriented framing</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="width:120px;height:68px;border-radius:6px;background:linear-gradient(135deg,#1a1a2e,#e50914);display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(255,255,255,.3);flex-shrink:0">BM</div>
+          <div><div style="font-size:13px;font-weight:600">Black Mirror S7</div><div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Teaser Art - <span class="tag tag-tension" style="font-size:10px">Shock Value</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:4px">Aggressive, provocative framing</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="width:120px;height:68px;border-radius:6px;background:linear-gradient(135deg,#ffd166,#ef8354);display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(255,255,255,.3);flex-shrink:0">OP</div>
+          <div><div style="font-size:13px;font-weight:600">One Piece S2</div><div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Action Banner - <span class="tag tag-excitement" style="font-size:10px">Adventure</span></div><div style="font-size:11px;color:var(--text-muted);margin-top:4px">High-energy battle scene framing</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- With Mood Matching -->
+    <div class="card" style="border-color:var(--accent-calm)">
+      <div class="card-header">
+        <div>
+          <div class="card-title" style="color:var(--accent-calm)">&#10004; With Mood Matching (Proposed)</div>
+          <div class="card-subtitle">Assets selected by mood vector alignment</div>
+        </div>
+        <span style="font-size:12px;color:var(--accent-calm);font-weight:600">+6.2% CTR</span>
+      </div>
+      <div id="moodAssets" style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="width:120px;height:68px;border-radius:6px;background:linear-gradient(135deg,#1a0a2e,#3d1a6e);display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(255,255,255,.3);flex-shrink:0">ST</div>
+          <div><div style="font-size:13px;font-weight:600">Stranger Things S5</div><div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Art C - <span class="tag tag-nostalgia" style="font-size:10px">Nostalgic</span> <span class="tag tag-melancholy" style="font-size:10px">Atmospheric</span></div><div style="font-size:11px;color:var(--accent-calm);margin-top:4px">&#10003; Mood match: 0.89 &mdash; Quiet, atmospheric variant</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="width:120px;height:68px;border-radius:6px;background:linear-gradient(135deg,#0f0f23,#1a1a3e);display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(255,255,255,.3);flex-shrink:0">BM</div>
+          <div><div style="font-size:13px;font-weight:600">Black Mirror S7</div><div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Art B - <span class="tag tag-melancholy" style="font-size:10px">Contemplative</span> <span class="tag tag-tension" style="font-size:10px">Subtle Tension</span></div><div style="font-size:11px;color:var(--accent-calm);margin-top:4px">&#10003; Mood match: 0.84 &mdash; Thoughtful, muted palette</div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="width:120px;height:68px;border-radius:6px;background:linear-gradient(135deg,#0a2342,#126782);display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(255,255,255,.3);flex-shrink:0">TD</div>
+          <div><div style="font-size:13px;font-weight:600">The Diplomat S3</div><div style="font-size:11px;color:var(--text-secondary);margin-top:4px">Art D - <span class="tag tag-suspense" style="font-size:10px">Suspense</span> <span class="tag tag-calm" style="font-size:10px">Composed</span></div><div style="font-size:11px;color:var(--accent-calm);margin-top:4px">&#10003; Mood match: 0.81 &mdash; Cerebral intrigue framing</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match Explanation -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Match Logic Explanation</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:16px;align-items:center;text-align:center">
+      <div style="padding:16px;background:rgba(229,9,20,.06);border-radius:10px">
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Member Mood Vector</div>
+        <div style="font-size:11px">Tension: <strong>0.72</strong></div>
+        <div style="font-size:11px">Melancholy: <strong>0.61</strong></div>
+        <div style="font-size:11px">Suspense: <strong>0.68</strong></div>
+        <div style="font-size:11px">Calm: <strong>0.38</strong></div>
+      </div>
+      <div style="font-size:24px;color:var(--text-muted)">&times;</div>
+      <div style="padding:16px;background:rgba(199,125,255,.06);border-radius:10px">
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Asset Emotional Vectors</div>
+        <div style="font-size:11px">248,391 assets scored</div>
+        <div style="font-size:11px">8 emotional dimensions</div>
+        <div style="font-size:11px">Per-title ranked selection</div>
+      </div>
+      <div style="font-size:24px;color:var(--text-muted)">&rarr;</div>
+      <div style="padding:16px;background:rgba(6,214,160,.06);border-radius:10px">
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">Optimized Selection</div>
+        <div style="font-size:11px">Top cosine-similarity match</div>
+        <div style="font-size:11px">Exploration: 10% random</div>
+        <div style="font-size:11px">Latency: &lt; 50ms p99</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!--         PAGE: LOCALIZATION DRIFT           -->
+<!-- ========================================== -->
+<div class="page" id="page-localization">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Localization Emotional Drift Detection</div>
+      <div class="section-desc">Flag translated/dubbed assets where emotional tone drifts from the source</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary">Export Report</button>
+      <button class="btn btn-primary">Run Drift Scan</button>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">
+    <div class="metric-card">
+      <div class="metric-label">Total Localized Assets Scanned</div>
+      <div class="metric-value">34,892</div>
+      <div class="metric-change positive">Across 32 languages</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Drift Flags (Score &gt; 0.20)</div>
+      <div class="metric-value" style="color:var(--accent-excitement)">847</div>
+      <div class="metric-change negative">2.4% of all localized assets</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">High Drift (Score &gt; 0.35)</div>
+      <div class="metric-value" style="color:var(--accent-tension)">123</div>
+      <div class="metric-change negative">Requires creative review</div>
+    </div>
+  </div>
+
+  <!-- Drift Detail Table -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">High-Drift Assets Requiring Review</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm btn-secondary">Filter by Language</button>
+        <button class="btn btn-sm btn-secondary">Filter by Title</button>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>Asset</th><th>Type</th><th>Source</th><th>Target</th><th>Drift Score</th><th>Primary Shift</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:600">Wednesday S2 - Hero Banner</td><td>Artwork</td><td>English</td><td>Japanese</td>
+          <td><span class="drift-score bad">0.41</span></td>
+          <td><span class="tag tag-tension">Tension &darr;</span> <span class="tag tag-calm">Calm &uarr;</span></td>
+          <td><button class="btn btn-sm btn-primary">Review</button></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">Squid Game S3 - Synopsis</td><td>Text</td><td>Korean</td><td>Portuguese (BR)</td>
+          <td><span class="drift-score warning">0.38</span></td>
+          <td><span class="tag tag-suspense">Suspense &darr;</span> <span class="tag tag-excitement">Excitement &uarr;</span></td>
+          <td><button class="btn btn-sm btn-primary">Review</button></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">The Crown S6 - Trailer</td><td>Video</td><td>English</td><td>German</td>
+          <td><span class="drift-score warning">0.36</span></td>
+          <td><span class="tag tag-nostalgia">Nostalgia &darr;</span> <span class="tag tag-tension">Tension &uarr;</span></td>
+          <td><button class="btn btn-sm btn-primary">Review</button></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">Lupin S4 - Promo Copy</td><td>Text</td><td>French</td><td>Hindi</td>
+          <td><span class="drift-score warning">0.31</span></td>
+          <td><span class="tag tag-warmth">Warmth &darr;</span> <span class="tag tag-excitement">Excitement &uarr;</span></td>
+          <td><button class="btn btn-sm btn-primary">Review</button></td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">All Quiet - Key Art</td><td>Artwork</td><td>German</td><td>Thai</td>
+          <td><span class="drift-score warning">0.29</span></td>
+          <td><span class="tag tag-melancholy">Melancholy &darr;</span> <span class="tag tag-tension">Tension &uarr;</span></td>
+          <td><button class="btn btn-sm btn-primary">Review</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Side-by-side drift example -->
+  <div class="card" style="margin-top:20px">
+    <div class="card-header">
+      <div class="card-title">Drift Analysis: Wednesday S2 Hero Banner &mdash; EN vs JP</div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <h4 style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">&#127468;&#127463; English (Source)</h4>
+        <div style="width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#1a1a2e,#2d1b4e,#e50914);border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:rgba(255,255,255,.2)">Wednesday</div>
+        <div class="emotion-bar-group">
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Tension</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:85%;background:var(--accent-tension)"></div></div><div class="emotion-bar-value">0.85</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Melancholy</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:62%;background:var(--accent-melancholy)"></div></div><div class="emotion-bar-value">0.62</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Suspense</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:71%;background:var(--accent-suspense)"></div></div><div class="emotion-bar-value">0.71</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Calm</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:18%;background:var(--accent-calm)"></div></div><div class="emotion-bar-value">0.18</div></div>
+        </div>
+      </div>
+      <div>
+        <h4 style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">&#127471;&#127477; Japanese (Target) &mdash; <span style="color:var(--accent-tension)">Drift: 0.41</span></h4>
+        <div style="width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#2d2d4e,#4a3a6e,#8b6cc1);border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:rgba(255,255,255,.2)">&#12454;&#12455;&#12531;&#12474;&#12487;&#12540;</div>
+        <div class="emotion-bar-group">
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Tension</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:52%;background:var(--accent-tension)"></div></div><div class="emotion-bar-value" style="color:var(--accent-tension)">0.52 &darr;</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Melancholy</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:45%;background:var(--accent-melancholy)"></div></div><div class="emotion-bar-value">0.45 &darr;</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Suspense</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:40%;background:var(--accent-suspense)"></div></div><div class="emotion-bar-value" style="color:var(--accent-tension)">0.40 &darr;</div></div>
+          <div class="emotion-bar-row"><div class="emotion-bar-label">Calm</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:55%;background:var(--accent-calm)"></div></div><div class="emotion-bar-value" style="color:var(--accent-excitement)">0.55 &uarr;</div></div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:rgba(229,9,20,.08);border-radius:8px;font-size:12px">
+          <strong>Drift diagnosis:</strong> JP localized banner uses softer colors and wider composition, reducing tension and suspense signals while increasing calm. Recommend creative review to restore darker palette.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!--         PAGE: A/B EXPERIMENTS              -->
+<!-- ========================================== -->
+<div class="page" id="page-experiment">
+  <div class="section-header">
+    <div>
+      <div class="section-title">A/B Experiment Results</div>
+      <div class="section-desc">Phase 2 validation: Mood-matched vs. default asset selection</div>
+    </div>
+    <span class="tag" style="background:rgba(6,214,160,.15);color:var(--accent-calm);font-size:12px;padding:6px 14px">Phase 2 &mdash; Week 4 of 6</span>
+  </div>
+
+  <!-- Experiment Metrics -->
+  <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">
+    <div class="metric-card" style="border-color:var(--accent-calm)">
+      <div class="metric-label">Click-Through Rate Lift</div>
+      <div class="metric-value" style="color:var(--accent-calm)">+6.2%</div>
+      <div class="metric-change positive">Target: +5.0% &mdash; &#10004; Exceeding</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">p-value: 0.003 (significant)</div>
+    </div>
+    <div class="metric-card" style="border-color:var(--accent-nostalgia)">
+      <div class="metric-label">Title-Start Rate Lift</div>
+      <div class="metric-value" style="color:var(--accent-nostalgia)">+3.8%</div>
+      <div class="metric-change positive">Target: +3.0% &mdash; &#10004; Exceeding</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">p-value: 0.011 (significant)</div>
+    </div>
+    <div class="metric-card" style="border-color:var(--accent-excitement)">
+      <div class="metric-label">Session Depth Change</div>
+      <div class="metric-value" style="color:var(--accent-excitement)">-8.3%</div>
+      <div class="metric-change positive">Members browse less, watch more</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">Reduced friction to play</div>
+    </div>
+  </div>
+
+  <!-- Experiment Details -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Experiment Configuration</div></div>
+      <table class="data-table">
+        <tbody>
+          <tr><td style="color:var(--text-secondary)">Experiment ID</td><td style="font-weight:600">MOOD-MATCH-2026-Q1</td></tr>
+          <tr><td style="color:var(--text-secondary)">Status</td><td><span class="status-dot active"></span> Running</td></tr>
+          <tr><td style="color:var(--text-secondary)">Population</td><td>2.4M members (random 5% sample)</td></tr>
+          <tr><td style="color:var(--text-secondary)">Markets</td><td>US, UK, Brazil, Japan, Germany</td></tr>
+          <tr><td style="color:var(--text-secondary)">Titles in test</td><td>847 (mixed genre/language)</td></tr>
+          <tr><td style="color:var(--text-secondary)">Control</td><td>Current personalization engine</td></tr>
+          <tr><td style="color:var(--text-secondary)">Treatment</td><td>Mood-aware asset selection</td></tr>
+          <tr><td style="color:var(--text-secondary)">Randomization</td><td>Title-level within same slate</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Lift by Mood Context</div></div>
+      <div class="emotion-bar-group">
+        <div class="emotion-bar-row"><div class="emotion-bar-label" style="width:120px">Late Night</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:94%;background:var(--accent-calm)"></div></div><div class="emotion-bar-value">+9.4%</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label" style="width:120px">Post-Binge</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:78%;background:var(--accent-nostalgia)"></div></div><div class="emotion-bar-value">+7.8%</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label" style="width:120px">Comfort Seek</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:71%;background:var(--accent-warm)"></div></div><div class="emotion-bar-value">+7.1%</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label" style="width:120px">Weekend AM</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:52%;background:var(--accent-excitement)"></div></div><div class="emotion-bar-value">+5.2%</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label" style="width:120px">Commute</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:43%;background:var(--accent-melancholy)"></div></div><div class="emotion-bar-value">+4.3%</div></div>
+        <div class="emotion-bar-row"><div class="emotion-bar-label" style="width:120px">Active Browse</div><div class="emotion-bar-track"><div class="emotion-bar-fill" style="width:31%;background:var(--accent-suspense)"></div></div><div class="emotion-bar-value">+3.1%</div></div>
+      </div>
+      <div style="margin-top:16px;padding:10px 14px;background:rgba(6,214,160,.08);border-radius:8px;font-size:12px;color:var(--accent-calm)">
+        Largest lifts in high-emotional-context sessions (late night, post-binge, comfort seeking). Mood matching adds most value when emotional state diverges most from baseline preferences.
+      </div>
+    </div>
+  </div>
+
+  <!-- Go/No-Go -->
+  <div class="card" style="margin-top:20px;border-color:var(--accent-calm)">
+    <div class="card-header">
+      <div class="card-title">Phase 2 Go/No-Go Assessment</div>
+      <span class="tag" style="background:rgba(6,214,160,.2);color:var(--accent-calm);font-size:12px;padding:6px 14px;font-weight:700">RECOMMEND: GO</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+      <div style="padding:14px;background:rgba(6,214,160,.06);border-radius:8px">
+        <div style="font-size:12px;color:var(--accent-calm);font-weight:600;margin-bottom:6px">&#10004; CTR Lift: +6.2%</div>
+        <div style="font-size:11px;color:var(--text-secondary)">Exceeds +5% target. Statistically significant at p &lt; 0.01.</div>
+      </div>
+      <div style="padding:14px;background:rgba(6,214,160,.06);border-radius:8px">
+        <div style="font-size:12px;color:var(--accent-calm);font-weight:600;margin-bottom:6px">&#10004; Title-Start Lift: +3.8%</div>
+        <div style="font-size:11px;color:var(--text-secondary)">Exceeds +3% target. Significant at p &lt; 0.05.</div>
+      </div>
+      <div style="padding:14px;background:rgba(6,214,160,.06);border-radius:8px">
+        <div style="font-size:12px;color:var(--accent-calm);font-weight:600;margin-bottom:6px">&#10004; Session Depth: -8.3%</div>
+        <div style="font-size:11px;color:var(--text-secondary)">Members find content faster. Reduced browse-to-play friction.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ===== NAVIGATION =====
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const page = item.dataset.page;
+    if (!page) return;
+
+    // Update nav active state
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+
+    // Switch page
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+
+    // Update title
+    const titles = {
+      dashboard: 'Dashboard',
+      tagging: 'Emotional Tone Tagging Engine',
+      mood: 'Member Mood Inference',
+      matching: 'Mood-Asset Matching',
+      localization: 'Localization Drift Detection',
+      experiment: 'A/B Experiments'
+    };
+    document.getElementById('pageTitle').textContent = titles[page] || 'Dashboard';
+  });
+});
+
+// ===== TABS =====
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    tab.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+// ===== ASSET DETAIL =====
+function showAssetDetail(el) {
+  const detail = document.getElementById('assetDetail');
+  detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+  if (detail.style.display === 'block') {
+    detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// ===== SCENARIO SWITCHING =====
+const scenarios = {
+  latenight: {
+    label: 'Late-Night Wind-Down',
+    icon: '&#127769;',
+    signals: {time:'10:47 PM',device:'Smart TV',last:'Dark (S3E8)',speed:'Slow / Deliberate',rewatch:'None'},
+    context: 'High receptivity to atmospheric thrillers, psychological dramas, and contemplative sci-fi.'
+  },
+  saturday: {
+    label: 'Saturday Morning Energy',
+    icon: '&#9728;&#65039;',
+    signals: {time:'9:15 AM',device:'Smart TV',last:'The Great British Bake Off',speed:'Fast / Browsing',rewatch:'None'},
+    context: 'High appetite for feel-good content, comedies, family-friendly adventure, and upbeat documentaries.'
+  },
+  comfort: {
+    label: 'Post-Breakup Comfort Seeking',
+    icon: '&#128156;',
+    signals: {time:'2:30 PM',device:'Mobile',last:'The Notebook (rewatch)',speed:'Very Slow',rewatch:'3 rewatches this week'},
+    context: 'Strong comfort-seeking signal. Prioritize warmth, nostalgia, and familiar favorites over novelty.'
+  },
+  commute: {
+    label: 'Mobile Commute',
+    icon: '&#128652;',
+    signals: {time:'7:45 AM',device:'Mobile',last:'Morning Joe Podcast',speed:'Quick taps',rewatch:'None'},
+    context: 'Short-form, high-engagement content. Snackable trailers, quick-start episodes, energizing picks.'
+  }
+};
+
+function setScenario(key) {
+  const s = scenarios[key];
+  document.getElementById('scenarioLabel').innerHTML = s.label;
+}
+
+function simulateMatch() {
+  const keys = Object.keys(scenarios);
+  const random = keys[Math.floor(Math.random() * keys.length)];
+  setScenario(random);
+}
+
+// ===== LIVE MOOD ANIMATION =====
+function animateMoodBars() {
+  const bars = document.querySelectorAll('#page-mood .emotion-bar-fill');
+  bars.forEach(bar => {
+    const current = parseFloat(bar.style.width);
+    const delta = (Math.random() - 0.5) * 4;
+    const next = Math.max(5, Math.min(95, current + delta));
+    bar.style.width = next + '%';
+    const valEl = bar.parentElement.nextElementSibling;
+    if (valEl) valEl.textContent = (next / 100).toFixed(2);
+  });
+}
+setInterval(animateMoodBars, 3000);
+</script>
+</body>
+</html>
